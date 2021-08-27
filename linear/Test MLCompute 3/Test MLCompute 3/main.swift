@@ -217,3 +217,44 @@ denseWeightsTensor.data!.withUnsafeBytes { buffer in
 denseBiasesTensor.data!.withUnsafeBytes { buffer in
     print("Bias: \(buffer.baseAddress!.load(as: DataType.self))")
 }
+
+
+// MARK: Perform inference
+
+// This is some input data for the model that it has not seen before
+// The desired output is [13, 15, 17, 19]
+let rawTestInferenceInData: [DataType] = [4, 5, 6, 7]
+let testInferenceInData = arrayToTensorData(rawTestInferenceInData)
+
+// Create an inference graph from `graph`
+let inferenceGraph = MLCInferenceGraph(graphObjects: [graph])
+// Specify that we will provide input data for `inputTensor`
+inferenceGraph.addInputs(["in": inputTensor])
+// Compile the graph
+inferenceGraph.compile(options: [], device: device)
+
+// Perform inference
+// Pass the input data for the `inputsData` parameter, using the corresponding string key as discussed above
+// Pass the number of examples provided for inference as the batch size
+// Pass the `.synchronous` option so that the function doesn't return until inference completes
+inferenceGraph.execute(
+    inputsData: ["in": testInferenceInData],
+    batchSize: rawTestInferenceInData.count,
+    options: [.synchronous]
+) { resultTensor, error, time in
+    // Here, `resultTensor` is a tensor that holds the result of executing the model on the input data.
+    // Get a pointer to the result, read its contents as contiguously stored instances of `Float32`, then print the contents to the console
+    // Again, the desired output is [13, 15, 17, 19]
+    resultTensor!.data!.withUnsafeBytes { buffer in
+        let bufferBaseAddress = buffer.baseAddress!
+        var result = [DataType]()
+        for i in 0 ..< rawTestInferenceInData.count {
+            result.append(
+                bufferBaseAddress
+                    .advanced(by: i * MemoryLayout<DataType>.stride)
+                    .load(as: DataType.self)
+            )
+        }
+        print("Inference result: \(result)")
+    }
+}
