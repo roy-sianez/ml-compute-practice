@@ -197,6 +197,8 @@ for epoch in 0 ... 500 {
         }
         
         print(result)
+        
+        bufferOutput.deallocate()
     }
 }
 
